@@ -12,10 +12,23 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
-df = pd.read_csv('sample.csv', encoding = 'latin-1', low_memory=True)
+df = pd.read_csv('globalterrorismdb.csv', encoding = 'latin-1', low_memory=True)
 df =df[['eventid', 'iyear','imonth', 'iday', 'country_txt', 'region_txt', 'city', 'latitude', 'longitude', 'nkill']]
+df['iyear']= df['iyear'].astype(int)
+countries = np.append(['Todos'], df['country_txt'].sort_values().unique())
 
-countries = np.append(['Todos'], df['country_txt'].unique())
+def scatter_attacks(dataframe):
+    paises = pd.DataFrame(dataframe.country_txt.value_counts())
+    paises.columns = ['n_attacks']
+    most_attacked = paises.loc[paises.n_attacks >100]
+    fig = px.scatter(most_attacked,
+                    y= 'n_attacks',
+                    x=most_attacked.index,
+                    color='n_attacks',
+                    marginal_y = 'histogram',
+                    template='plotly_white')
+    return fig
+
 
 app.layout = html.Div([
     html.Div([
@@ -29,13 +42,18 @@ app.layout = html.Div([
                 id='dead',
                 options=[{'label': i, 'value': i} for i in ['Todos','Com morte', 'Sem morte']],
                 value='Todos',
-                labelStyle={'display': 'inline-block'}
+                labelStyle={'display': 'inline-block', 'color': '#ffffff'}
             )
         ],
-        style={'width': '48%', 'display': 'inline-block', 'background': '#000000'}),
-    ]),
-    dcc.Graph(id='indicator-graphic') 
-])
+        style={'width': '10%', 'height': '100vh','min-height': '100%','display': 'inline-block', 'background': '#000000', 'margin':'0'}),
+   
+    html.Div([
+           dcc.Graph(id='indicator-graphic'),
+           dcc.Graph(id='scatter-attacks', figure= scatter_attacks(df))
+        ],
+        style={'width': '88%', 'height': '50vh','display': 'inline-block', 'float':'right',  'margin':'0'}),
+    ])  
+], style={'width': '100%', 'height': '50vh'})
 
 @app.callback(
     Output('indicator-graphic', 'figure'),
@@ -43,24 +61,26 @@ app.layout = html.Div([
      Input('dead', 'value')])
 def update_graph(country, dead):
     dff = df
+    z = 1
     if(country !="Todos"):
-      dff= df.loc[df['country_txt'] == country]
+      dff = df.loc[df['country_txt'] == country].copy()
+      z=3
     
     if(dead =="Com morte"):
-      dff= dff.loc[dff['nkill'] >0]
+      dff = dff.loc[dff['nkill'] >0].copy()
     elif(dead =="Sem morte"):
-      dff= dff.loc[dff['nkill'] == 0]
+      dff = dff.loc[dff['nkill'] == 0].copy()
     
     fig = px.scatter_mapbox(dff, 
                         lat='latitude',
                         lon='longitude',
                         text='city',
                         color='iyear',
-                        zoom= 0,
-                        color_continuous_scale=px.colors.cyclical.IceFire,
+                        zoom= z,
+                        color_discrete_sequence=px.colors.qualitative.G10,
                         mapbox_style='carto-positron')    
     fig.update_layout(margin={'r':0,'t':0,'l':0,'b':0})
 
     return fig
 if __name__ == '__main__':
-    app.run_server(debug=True, use_reloader=True)
+    app.run_server(debug=True)
