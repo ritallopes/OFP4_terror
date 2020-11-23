@@ -1,6 +1,6 @@
+import pandas as pd
 import plotly.express as px
 import plotly as pl
-import pandas as pd
 import numpy as np
 import dash
 import dash_core_components as dcc
